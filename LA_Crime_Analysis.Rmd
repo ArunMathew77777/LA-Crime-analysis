@@ -1,0 +1,445 @@
+---
+title: "LA Crime Analysis"
+author: "Arun Mathew"
+output: pdf_document
+---
+
+
+### Data Preparation
+
+Loading Packages
+```{r}
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(stringr)
+```
+
+Loading Dataset
+```{r warning=FALSE, message=FALSE}
+crime_data=read_csv("https://media.githubusercontent.com/media/ArunMathew77777/LA-Crime-analysis/main/Crime_Data_from_2020_to_Present.csv")
+colnames(crime_data) <- c('dr_no','date_rep','date_occ','time_occ','area','area_name','rep_dis_no','part_1_2',
+                          'crime_code','crime_desc','mocodes','victim_age',
+                          'victim_sex','victim_descent','premise_cd','premise_desc',
+                          'weapon_cd','weapon_desc','status','status_desc','crime_cd_1',
+                          'crime_cd_2','crime_cd_3','crime_cd_4','location','cross_street','lat','lon')
+glimpse(crime_data)
+```
+
+## Introduction 
+
+Crime is something that many people worry about on a daily basis. Whether it's ensuring your door is locked when you leave the house, avoiding a rough Neighbourhood or be Vigiliant or installing a security alarm prevention of crime takes up a significant part of our lives.
+
+The most important aspect of our lives is 'safety'.My interest in this dataset stems from its potential to analyze crime trends, identify vulnerable victims, discern crime timings, and track crime occurrences over time. Such analyses can raise awareness among the public and enable law enforcement to remain vigilant and alert in specific locations . This dataset reflects incidents of Crime in the City of Los Angeles dating back to 2020.This data is transcribed from original crime reports that are typed on paper,With columns detailing 'Report_Date' capturing incident dates, 'Age_group', providing demographic insights, 'Crime_Type' showcasing various crime categories like theft, assault, vandalism, and 'Citywide_count' quantifying the occurrences of each crime, this dataset serves as a pivotal resource for understanding crime patterns. Analyzing trends over time allows for a nuanced comprehension of crime prevalence across different age demographics and crime types. This dataset's depth enables investigations into factors influencing criminal activities and aids in the development of strategic interventions to address community safety concerns.
+
+
+## Data
+
+### Cases 
+
+This Dataset consists of 820599 Rows(Use Cases) and 28 Columns before cleaning.
+
+
+### Variables
+
+AREA NAME, Part 1-2, Crm Cd Desc, Mocodes, Premis Desc, Weapon Desc, Status Desc, LOCATION, Cross Street, Vict Sex, Vict Descent, DR_NO, DATE OCC, TIME OCC, AREA, Rpt Dist No, Crm Cd, Weapon Used Cd, Crm Cd 1, Crm Cd 2, Crm Cd 3, Crm Cd 4 (assuming they are numerical crime codes), LAT, LON, Vict Age, Premis Cd, 
+
+
+### Data collection 
+
+This is a realtime data from LAPD, which is collected from data.gov
+
+
+### Type of study 
+
+Its an Observational study.
+
+
+### Data Source 
+
+This data has been collected from data.gov.
+
+https://catalog.data.gov/dataset/crime-data-from-2020-to-present
+
+
+### Describe your variables?
+
+#### Interpreting the Columns 
+
+DR_NO: This column likely represents a unique identifier for each incident or report.
+
+Date Rptd: This column appears to represent the date when the incident was reported.
+
+DATE OCC: This column seems to represent the date when the incident occurred.
+
+TIME OCC: This column appears to represent the time when the incident occurred.
+
+AREA: This column  represents a numerical code or identifier for a specific area.
+
+AREA NAME: This column represents the name or description of the area.
+
+Rpt Dist No: This column represents a numerical code or identifier for the reporting district.
+
+Part 1-2: This column's meaning is not clear without additional context.
+
+Crm Cd: This column represents a numerical code for the crime.
+
+Crm Cd Desc: This column contains the description of the crime corresponding to the Crm Cd.
+
+Mocodes: This column contain additional codes or descriptions related to the mode of operation for the crime.
+
+Premis Desc: This column contains the description of the premise corresponding to the Premis Cd.
+
+Weapon Used Cd: This column represents a numerical code for the weapon used in the crime.
+
+Weapon Desc: This column contains the description of the weapon corresponding to the Weapon Used Cd.
+
+Status: This column likely represents the status of the incident or case.
+
+Status Desc: This column contains the description of the status corresponding to the Status.
+
+Crm Cd 1, Crm Cd 2, Crm Cd 3, Crm Cd 4: These columns might represent additional crime codes or identifiers.
+
+LOCATION: This column contains the location or address of the incident.
+
+Cross Street: This column might contain information about a nearby cross street or location.
+
+LAT and LON: These columns likely represent latitude and longitude coordinates related to the incident location.
+
+Vict Age: This column represents the age of the victim.
+
+Vict Sex: This column represents the gender of the victim.
+
+Vict Descent: This column likely represents the ethnicity or descent of the victim.
+
+Premis Cd: This column represents a numerical code for the premise where the crime occurred.
+
+**If you are are running a regression or similar model, which one is your dependent variable?**
+
+TIME OCC will be our dependent variable.
+
+
+### Relevant summary statistics 
+
+```{r}
+head(crime_data)
+```
+
+
+Summary Statistics
+
+```{r}
+summary(crime_data)
+```
+
+
+changing the format of date_rep and date_occ from chr to dttm so that we can extract day of the week, month, year.
+
+```{r}
+crime_data$date_occ=mdy_hms(crime_data$date_occ)
+crime_data$date_rep=mdy_hms(crime_data$date_rep)
+```
+
+creating new columns Month, Year, Day of the Week and Month_Year which will contain the data of Month and Year in which the crime was committed.
+
+```{r}
+crime_data$month=format(as.Date(crime_data$date_occ),'%b')
+crime_data$year=format(as.Date(crime_data$date_occ),'%Y')
+crime_data$day=format(as.Date(crime_data$date_occ),'%d')
+crime_data$day_of_week=format(as.Date(crime_data$date_occ),'%A')
+crime_data$month_year=format(as.Date(crime_data$date_occ),'%b %Y')
+glimpse(crime_data)
+```
+
+Formatting time_occ to contain data in Hours instead of hours and minutes by changing the minutes to 0 in whichever hours they were present in. The reason to do this is that it'll make it easier to analyze data and to find out information specific to a particular hour of the day.
+
+```{r}
+crime_data$time_occ=as.integer(crime_data$time_occ)
+crime_data$time_occ=as.POSIXct(sprintf("%04.0f", crime_data$time_occ), format='%H')
+crime_data$time_occ=as_datetime(crime_data$time_occ)
+crime_data$time_occ=format(crime_data$time_occ,'%H:%M')
+glimpse(crime_data)
+```
+
+Location column contains data with a lot of unnecessary spaces. To remove them str_squish is used which combines to multiple spaces to only a single one.
+
+```{r}
+crime_data$location=str_squish(crime_data$location)
+glimpse(crime_data)
+```
+
+## Exploratory Data Analysis
+
+1) looking at what hour of the day crimes are committed the most
+
+```{r}
+crime_time= crime_data%>%
+group_by(time_occ)%>%
+count(time_occ)
+
+crime_time
+
+```
+
+```{r}
+ggplot(crime_time, aes(x = time_occ, y = n)) +
+  geom_point(size = 2, color = "blue") +  # Increase point size and change color
+  geom_smooth(method = "loess", se = FALSE, color = "red") +  # Smooth the line
+  labs(title = "Number of Crimes by Time Occurrence",
+       x = "Time of Occurrence",
+       y = "Number of Crimes")  +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+        panel.grid.major = element_line(color = "gray", linetype = "dotted"))  # Add gridlines
+
+```
+
+
+From the graph, we can observe certain patterns:
+
+Peak Hours: There appears to be variations in the frequency of crimes throughout the day. Certain time intervals exhibit higher crime rates compared to others. For example, there might be peaks during evening or early morning hours when criminal activities tend to be more prevalent.
+
+Trend Analysis: The line connecting the points helps in identifying any overall trends in crime occurrence throughout the day. For instance, if the line slopes upwards towards the evening or early morning hours, it suggests that crime rates tend to increase during those times.
+
+Identifying Hotspots: Certain time intervals may stand out as hotspots for criminal activities. These intervals might warrant closer attention from law enforcement agencies or community stakeholders to implement targeted crime prevention strategies during those times.
+
+2) Finding the day on which most crimes are committed.
+
+```{r}
+crimes_by_day_of_week=crime_data%>%
+  group_by(day_of_week)%>%
+  count(day_of_week)
+
+crimes_by_day_of_week
+```
+
+```{r}
+ggplot(crimes_by_day_of_week, aes(x = day_of_week, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Number of Crimes by Day of Week",
+       x = "Day of Week",
+       y = "Number of Crimes") +
+  theme_minimal()
+```
+
+Here are some observations from the graph:
+
+Variation Across Days: There is variation in the number of crimes reported throughout the week. Some days exhibit higher crime rates compared to others, as indicated by taller bars in the graph.
+
+Weekday vs. Weekend: There seems to be a noticeable difference between weekdays (Monday to Friday) and weekends (Saturday and Sunday). Generally, weekdays tend to have higher crime rates, possibly due to factors such as increased economic activity, commuter traffic, or routine patterns of criminal behavior.
+
+Patterns and Trends: Analyzing the distribution of crimes across different days can reveal patterns or trends that might inform law enforcement strategies or community interventions. For example, if certain days consistently experience higher crime rates, targeted policing or prevention efforts could be implemented during those times.
+
+3) Finding the month in which the crimes are committed the most
+
+```{r}
+crimes_by_month=crime_data%>%
+  group_by(month)%>%
+  count(month)
+
+crimes_by_month
+```
+
+```{r}
+# Reorder months chronologically
+crimes_by_month$month <- factor(crimes_by_month$month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Plot with enhancements
+ggplot(crimes_by_month, aes(x = month, y = n, group = 1)) +
+  geom_line(color = "red") +
+  geom_point(shape = 16, size = 3, color = "red", fill = "red") +  # Change point shape and size
+  theme_minimal() 
+```
+
+
+Here are some key observations from the graph:
+
+Seasonal Trends: The graph reveals potential seasonal patterns in crime occurrence. There may be months with higher crime rates, possibly associated with factors such as holidays, weather conditions, or social dynamics.
+
+Monthly Fluctuations: The line plot shows fluctuations in crime counts from month to month. Some months exhibit peaks, indicating higher crime rates, while others have troughs, representing lower crime activity.
+
+Identifying Hotspots: Analyzing crime trends by month can help identify potential hotspots or periods of increased criminal activity. Law enforcement agencies and policymakers can use this information to allocate resources effectively and implement targeted interventions in areas or during times of heightened criminal activity.
+
+4) Finding the crime that is committed the most in each area.
+
+```{r}
+find_mode <- function(x) {
+  u <- unique(x)
+  tab <- tabulate(match(x, u))
+  u[tab == max(tab)]
+}
+
+crime_new=crime_data%>%
+  group_by(area_name)%>%
+  summarize(crime_desc=find_mode(crime_desc))
+
+
+main_crime_by_area=data.frame(area_name=c(),crime_desc=c(),n=c())
+
+for(i in 1:21){
+  crime_new_2=crime_data%>%
+    filter(crime_data$area_name==crime_new$area_name[i] & crime_data$crime_desc==crime_new$crime_desc[i])%>%
+    group_by(area_name)%>%count(crime_desc)
+  main_crime_by_area=rbind(main_crime_by_area,crime_new_2)
+}
+
+main_crime_by_area
+```
+
+```{r}
+ggplot(main_crime_by_area, aes(x = area_name, y = n, fill = crime_desc)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Main Crime by Area",
+       x = "Area",
+       y = "Count",
+       fill = "Crime Description") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Here are some key observations from the graph:
+
+Crime Distribution Across Areas: The chart allows us to compare the prevalence of different crime types across various geographic areas. By examining the height of the bars, we can identify which crimes are most common in each area.
+
+Variability in Crime Types: The graph illustrates that certain crime types dominate in specific areas, while others may be less frequent or absent altogether. This variability suggests that crime patterns can vary significantly from one location to another.
+
+Insights for Law Enforcement: Law enforcement agencies can leverage this information to prioritize resources and develop targeted strategies for crime prevention and intervention. Understanding the prevalent crime types in each area enables law enforcement to tailor their approach to address local needs effectively.
+
+Geographic Trends: Analyzing crime distribution by area can also reveal geographic trends and patterns. Identifying areas with higher concentrations of specific crimes may indicate underlying social, economic, or environmental factors contributing to criminal activity.
+
+5) Now we'll look at the count of crimes in each areas.
+
+```{r}
+area_crimes_count=crime_data%>%
+  count(area_name)%>%
+  arrange(-n)
+
+area_crimes_count
+```
+
+```{r}
+ggplot(area_crimes_count, aes(x = reorder(area_name, -n), y = n)) +
+  geom_bar(stat = "identity", fill = "skyblue", alpha = 0.7) +
+  labs(title = "Crime Counts by Area",
+       x = "Area",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Here are some key insights from the graph:
+
+Variation in Crime Counts: The heights of the bars vary, indicating differences in the number of reported crimes across different areas. Some areas have higher crime counts, while others have relatively lower counts.
+
+High-Crime Areas: The graph highlights areas with the highest reported crime counts, as evidenced by the tallest bars. These areas may require additional attention and resources from law enforcement and community initiatives to address crime prevention and intervention.
+
+Insights for Resource Allocation: By visualizing crime counts by area, stakeholders can identify areas with the greatest need for crime-fighting resources, such as increased patrols, community policing efforts, or targeted intervention programs.
+
+Comparative Analysis: Comparing the heights of the bars allows for a quick assessment of relative crime levels between different areas. Areas with similar crime counts can be further analyzed to identify commonalities or differences contributing to crime rates.
+
+## Inference
+
+H0: There is no increase in number of crime as the time goes forward.
+
+HA: There is an increase in number of crime as the time goes forward
+
+Lets try to predict the variation in number of crime by hour 
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Convert time_occ to numeric hours
+crime_data <- crime_data %>%
+  mutate(hour = as.numeric(substr(time_occ, 1, 2)))
+
+# Group data by hour and count the number of crimes
+crime_by_hour <- crime_data %>%
+  group_by(hour) %>%
+  summarize(crime_count = n())
+
+# Plot predicted number of crimes by hour using LOESS regression
+ggplot(crime_by_hour, aes(x = hour, y = crime_count)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +  # LOESS regression
+  labs(title = "Predicted Number of Crimes by Hour",
+       x = "Hour",
+       y = "Number of Crimes") +
+  theme_minimal()
+
+```
+
+```{r}
+# Fit cubic model
+lm_cubic <- lm(crime_count ~ poly(hour, 3), data = crime_by_hour)
+
+# Calculate R-squared value
+rsquared <- summary(lm_cubic)$r.squared
+
+# Print R-squared value
+print(paste("R-squared value:", round(rsquared, 4)))
+
+```
+
+Prediction of pattern of crime daily from 2020
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Convert date_occ to numeric format (to be used as the independent variable)
+crime_by_day <- crime_data %>%
+  group_by(date_occ) %>%
+  summarize(crime_count = n()) %>%
+  mutate(date_numeric = as.numeric(date_occ))
+
+# Perform cubic regression
+cubic_model <- lm(crime_count ~ poly(date_numeric, 3, raw = TRUE), data = crime_by_day)
+
+# Summary of the cubic regression model
+summary(cubic_model)
+
+# Generate predicted values using the cubic model
+predicted_values <- predict(cubic_model, newdata = list(date_numeric = crime_by_day$date_numeric))
+
+# Create a data frame for plotting
+plot_data <- data.frame(date_occ = crime_by_day$date_occ, crime_count = crime_by_day$crime_count, predicted_count = predicted_values)
+
+# Plot actual data and regression line
+ggplot(plot_data, aes(x = date_occ)) +
+  geom_point(aes(y = crime_count), color = "black", size = 2, alpha = 1) +  # Actual data points
+  geom_line(aes(y = predicted_count), color = "red", size = 1.2, alpha = 1) +  # Regression line
+  labs(title = "Number of Crimes by Day (Cubic Regression)",
+       x = "Date",
+       y = "Number of Crimes") +
+  theme_minimal()
+
+```
+
+
+From the plot, we can observe fluctuations in crime counts over different days. The regression line helps visualize the general trend, showing whether crime counts are increasing, decreasing, or remaining stable over time. Additionally, any notable peaks or dips in the data can be identified, which may correspond to specific events or periods of interest. Overall, the plot provides insight into the temporal dynamics of crime occurrence within the dataset.
+
+
+## Conclusion
+
+The analysis conducted on the variation in crime occurrence by hour and by day provides valuable insights into the temporal patterns of criminal activity. 
+
+For the analysis by hour, the linear regression model and plot indicate a clear trend: the number of crimes tends to increase throughout the day, with peaks typically occurring in the late afternoon or evening hours. This suggests that certain times of the day may be more susceptible to criminal activity than others. 
+
+Similarly, the analysis by day reveals fluctuations in crime counts over time, with the regression line helping to visualize the overall trend. While there may be variations from day to day, the regression analysis provides insight into whether crime counts are generally increasing, decreasing, or remaining stable over the period examined.
+
+In conclusion, understanding the temporal patterns of crime occurrence can be crucial for law enforcement agencies and policymakers to allocate resources effectively and implement targeted interventions to prevent and address criminal activity. The insights gained from these analyses can inform strategies aimed at enhancing public safety and reducing crime rates in communities.
+
+## References
+
+Wikipedia - Crime in Los Angeles:This page provides an overview of crime statistics and trends in Los Angeles, covering historical data, prevalent types of crimes, law enforcement efforts, and initiatives to address crime-related issues.
+
+https://en.wikipedia.org/wiki/Crime_in_Los_Angeles
+
+Data.gov - Crime Data from 2020 to Present:This dataset contains crime-related data from 2020 onwards, likely including information such as types of crimes reported, locations, timestamps, and other relevant details, providing a comprehensive resource for analyzing recent crime statistics.
+
+https://catalog.data.gov/dataset/crime-data-from-2020-to-present
